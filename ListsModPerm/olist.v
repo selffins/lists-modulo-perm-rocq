@@ -1,15 +1,11 @@
+
 (** *  Lists
     Coq version of [abella-reasoning/lib/list.thm]
  *)
 
 (** ** Contains:
-    Status: all proved
-    + means my addition
-
     - [append_rel]
-       - + equivalences to [append]
     - [rev_rel]
-       - + equivalences to [rev]
     - [can_append]
     - [can_rev]
 
@@ -113,13 +109,6 @@ Module Type OList (ELT : Eqset_dec).
   | rev_nil : rev_rel [] []
   | rev_cons e J L (H : exists K, rev_rel J K /\ append_rel K (e :: []) L ) : rev_rel (e :: J) L.
 
-  (** The induction principle is problematic as well.
-   TBD: rewrite without the existential quantifier. *)
-
-  Inductive rev_rel_2 : list o -> list o -> Prop :=
-  | rev_nil_2 : rev_rel_2 [] []
-  | rev_cons_2 : forall e J L K, rev_rel_2 J K -> append_rel K (e :: []) L -> rev_rel_2 (e :: J) L.
-
   Example rev_123_321 :
     forall o1 o2 o3,
     rev_rel [o1 ; o2 ; o3] [o3 ; o2 ; o1].
@@ -149,51 +138,16 @@ Module Type OList (ELT : Eqset_dec).
       apply H.
   Qed.
 
-  (** In the Abella version, they define [is_list]. I think this is similar to providing an inductive definition of list.
-      For the Abella proof of this one, they actually state [can_rev] as [forall J, is_list J -> exists K, rev J K].
-      So, then they induct (and case) on [is_list J], which is doing the same thing as inducting on [J] in coq
-      and having cases based on the shape of [J].
-
-      This is the first proof which I've compared Abella with Coq. I will annotate it by the corresponding
-      Abella code.
-   *)
-
-  Hint Constructors rev_rel : my_db.
-
-  Check rev_rel.
-
   Theorem can_rev_rel : forall J, exists K, rev_rel J K.
   Proof.
-    (* induction on 1. intros. case H1. (Inducts on the list) *)
     intros.
     induction J as [ | A L ].
-    (* Base case: J is nil. Goal: exists K, rev nil K.
-       Reversing nil obviously gives us nil.
-       In Abella this is handled easily by using "search", which
-       presumably finds evidence for you. *)
-    - exists []. apply rev_nil. (* eauto works with my_db!! *)
-    (* Inductive case.
-       We have the IH "forall J, is_list J * -> (exists K, rev J K)" in Abella.
-       The asterisks mean that we can use this IH for is_list J hypothesis that is
-       smaller than the original is_list J in the theorem statement.
-
-       The abella proof proceeds with:
-       apply IH to H3.  ;; H3 here is "is_list L", L comes from J being (A :: L) in this case
-       apply can_append to _ _ with J = K, K = A :: nil.
-       apply rev_2_is_list to H4. search.
-       search.
-     *)
-
+    - exists []. apply rev_nil.
     - destruct IHL as [K].
-      (* The abella proof invokes "can_append" on K and (cons A nil).
-         They get that K ++ (cons A nil) = L1.
-         can_append here seems to be the way to show K == (cons A nil) is the append of K and (cons A nil). Which they use for the
-         evidence for rev_rel. We can of course provide K ++ (cons A nil) instead to rev_rel.
-       *)
       assert (H1 : exists L1, append_rel K [A] L1).
       {
         exists (K ++ [A]). apply append_append_rel.
-      }
+xs      }
       destruct H1 as [L1].
       exists L1.
       apply rev_cons.
@@ -253,9 +207,7 @@ Section Perm.
 
   (** ** Contains:
       [*] denotes my addition.
-      Status: incomplete
 
-<<
     - adj
     1. adj_exists
     2. *adj_cons_comm_1
@@ -295,10 +247,7 @@ Section Perm.
     30. adj_preserves_member_lem
     31, adj_preserves_member
     32. perm_preserves_member
->>
 
-   For some proofs, induction on adj and especially induction on perm does not work.
-   We will need to take a look at the inductive principle first...
    *)
 
   (** ** Adj *)
@@ -307,32 +256,14 @@ Section Perm.
   | adj_hd : forall L A, adj L A (A :: L)
   | adj_tl : forall B K A L, adj K A L -> adj (B :: K) A (B :: L).
 
-  (** Originally:
-Define adj : olist -> o -> olist -> prop by
-; adj L A (A :: L) := is_o A /\ is_list L
-; adj (B :: K) A (B :: L) := is_o B /\ adj K A L
-.
-   *)
 
   (** Note:
       The abella library did not have these commutativity stuff.
       I needed it to prove some theorems, particularly example [adj_1_23_321]. *)
 
-  Lemma adj_prefix :
-    forall X K A L,
-      adj K A L ->
-      adj (X ++ K) A (X ++ L).
-  Proof.
-    intros.
-    induction X as [ | x X' ].
-    - apply H.
-    - repeat rewrite <- app_comm_cons.
-      apply adj_tl.
-      apply IHX'.
-  Qed.
-
   Theorem adj_cons_comm_1 : forall A B K C L, adj (A :: B :: K) C L -> adj (B :: A :: K) C L.
   Admitted.
+
 
   Theorem adj_cons_comm_2 : forall A B K C L, adj K C (A :: B :: L) -> adj K C (B :: A :: L).
   Admitted. 
@@ -372,27 +303,6 @@ Define adj : olist -> o -> olist -> prop by
     exists (A :: L).
     apply adj_hd.
   Qed.
-
-  (** Note:
-      Here is the Abella proof of [adj_swap] (annotations e.g. bullet points + comments mine):
-  *)
-
-  (*
-  Theorem adj_swap : forall A J K B L, adj J A K -> adj K B L -> exists U, adj J B U /\ adj U A L.
-
-      induction on 2.
-      intros.
-          - case H2.                                (* Case on adj K B L @ *)
-          - case H1.                                (* Case on adj J A K *)
-              -- search.                            (* Provide B :: J *)
-              -- apply adj_1_is_list to H6.
-              search.                               (* Provide B :: B1 :: K1 *)
-           - case H1.                               (* Case on adj J A (B1 :: K1) *)
-               -- apply adj_3_is_list to H4.
-                  search.                           (* Provide L1 *)
-               -- apply IH to H6 H4.                (* IH on [K2 A ~ K1], [K1 B ~ L1] gives [K2 B ~ U'] [U' A ~ L1]. *)
-              search.                               (* Provide B1 :: U' *)
-   *)
 
   Theorem adj_tl_inv : forall B K A L, adj (B :: K) A (B :: L) -> adj K A L.
   Proof.
@@ -436,23 +346,6 @@ Define adj : olist -> o -> olist -> prop by
          --- apply adj_tl. apply H4b.
   Qed.
 
-  (** Note:
-
-      Here is the Abella proof of [adj_same]:
-<<
-      induction on 1.            (* Induction on adj L A (B :: L) *)
-      intros.
-      case H1.
-      - search.
-      - apply IH to H3. search.
->>
-
-      It is short, so I wonder why I couldn't prove it in Coq. There is something forgotten when I apply induction.  We do not seem to have the [H1] that this proof cases on.
-      So for now we admit.
-
-      Update: We simply needed to use the remember tactic: [B :: L'] isn't of the more generic shape [L], which causes induction to forget some structure.
-   *)
-
   Theorem adj_same : forall A L B, adj L A (B :: L) -> A = B.
   Proof.
     intros. remember (B :: L) as F.
@@ -460,31 +353,6 @@ Define adj : olist -> o -> olist -> prop by
     - inversion HeqF. reflexivity.
     - apply IHadj. inversion HeqF. reflexivity.
   Qed.
-
-  (** Note:
-
-      Here is the Abella proof of [adj_append 1]:
-
-<<
-      induction on 1. intros.
-      case H1.
-      - case H2.
-      -- apply append_2_is_list to H6.
-      -- apply append_3_is_list to H6. search.
-      - case H2.
-      apply IH to H4 H6. search.
->>
-
-      The corresponding proof diverges a little bit from this
-      because I leverage [append_rel]'s equivalence with append in Coq.
-
-      [append_rel] has a [exists] part relating the two appendees(?)
-      but [append] is actually something that constructs such a list.
-
-      We write [append_rel] (and [rev_rel]) to have a clearer correspondence with the relational style in Abella.
-      It also means only the theorems about [append_rel] and [rev_rel] are in the library - there is less clutter.
-
-   *)
 
   Theorem adj_append_1 : forall J A K L KL,
       adj J A K ->
@@ -536,40 +404,12 @@ Define adj : olist -> o -> olist -> prop by
 
   (** ** Perm *)
 
-  (** Abella version: (notice the existential quantifier)
-<<
-       perm J K : J and K have the same elements
-       Define perm : olist -> olist -> prop by
-       ; perm nil nil
-       ; perm K L :=
-       exists A KK LL, adj KK A K /\ adj LL A L /\ perm KK LL.
->>
-   *)
-
-  Inductive perm1 : list o -> list o -> Prop :=
-  | perm1_nil : perm1 nil nil
-  | perm1_split K L : (exists A KK LL, adj KK A K /\ adj LL A L /\ perm1 KK LL) -> perm1 K L.
-
-  (** This version without exists is more behaved
-      regarding induction because the [KK] and [LL]
-      can be used outside of the existential quantifier. *)
-
   Inductive perm  : list o -> list o -> Prop :=
   | perm_nil : perm nil nil
   | perm_split : forall K L A KK LL, adj KK A K ->
                                      adj LL A L ->
                                      perm KK LL ->
                                      perm K L.
-
-  (*
-    Check perm_ind.
-
-    perm_ind
-     : forall P : list o -> list o -> Prop,
-       P [] [] ->
-       (forall (K L : list o) (A : o) (KK LL : list o), adj KK A K -> adj LL A L -> perm KK LL -> P KK LL -> P K L) ->
-       forall l l0 : list o, perm l l0 -> P l l0
-   *)
 
   (** *** Examples of [perm] *)
 
@@ -674,6 +514,7 @@ Define adj : olist -> o -> olist -> prop by
     apply H. apply H0. apply H1.
   Qed.
 
+  (* todo: clean *)
   Theorem perm_trans_lem : forall J K L, perm J K -> perm K L -> perm J L.
   Proof.
     intros J K. generalize dependent J.
@@ -713,7 +554,7 @@ Define adj : olist -> o -> olist -> prop by
           destruct H13 as [J2 [H13a H13b]].
           apply IH with (J := U) in H13b.
           eapply adj_preserves_perm.
-          (* ?? *)
+          (* todo: clean *)
           apply H11b.
           apply H13a.
           apply H13b.
@@ -733,8 +574,6 @@ Define adj : olist -> o -> olist -> prop by
     apply H0.
   Qed.
 
-  (* Interesting how the abella proof is 4 tactics. *)
-
   Theorem adj_same_source : forall J A K L,
       adj J A K -> adj J A L ->
       perm K L.
@@ -742,7 +581,8 @@ Define adj : olist -> o -> olist -> prop by
     intros.
     inversion H;inversion H0;subst.
     - apply perm_refl.
-    - eapply perm_split.
+    - (* econstructor; solve [ eauto; try apply perm_refl ]. *)
+      eapply perm_split.
       -- apply H.
       -- apply H0.
       -- apply perm_refl.
@@ -765,7 +605,6 @@ Define adj : olist -> o -> olist -> prop by
       adj K A L ->
       perm J K.
   Proof.
-    (*  Induction on adj J A L and casing on adj K A L *)
     intros. generalize dependent K.
     induction H;intros.
     - inversion H0;subst.
@@ -785,14 +624,12 @@ Define adj : olist -> o -> olist -> prop by
          --- apply IHadj in H4. apply H4.
   Qed.
 
-
   Theorem adj_same_result_diff : forall J A K B L,
       adj J A L ->
       adj K B L ->
       (A = B /\ perm J K) \/
         exists KK, adj KK A K.
   Proof.
-    (*  Induction on adj J A L and casing on adj K B L, giving a witness from IH *)
     intros. generalize dependent K. generalize dependent B.
     induction H; intros.
     - inversion H0;subst.
@@ -819,7 +656,6 @@ Define adj : olist -> o -> olist -> prop by
       (A = B /\ perm J K) \/
         exists JJ KK, adj JJ B J /\ adj KK A K /\ perm JJ KK.
   Proof.
-    (* Induction on adj J A L and casing on adj K B L*)
     intros. generalize dependent K.
     induction H;intros.
     - inversion H0;subst.
@@ -857,56 +693,80 @@ Define adj : olist -> o -> olist -> prop by
       adj KK A K ->
       perm JJ KK.
   Proof.
-    (* Induction on perm J K, one casing on adj JJ A J, applying many previous theorems *)
-    intros A J K JJ KK H1.
-    generalize dependent JJ. generalize dependent KK. generalize dependent A.
-    induction H1; intros.
-    - (* perm_nil *)
-      inversion H.
-    - (* perm_split *)
-      Admitted. (* Check the name of the variables here and in Abella. *)
-  (*  Proof in abella:
-
-induction on 1. intros. case H1.
-  case H2.
-  apply adj_same_result_diff to H2 H4. case H7.
-    apply adj_same_result_diff to H3 H5. case H9.
-      apply perm_trans to *H8 *H6. apply perm_sym to *H10. backchain perm_trans.
-      apply adj_same_result to H3 H5. apply perm_trans to *H8 *H6. apply perm_sym to *H11. backchain perm_trans.
-    apply adj_same_result_diff to H3 H5. case H9.
-      apply perm_sym to *H10. apply perm_trans to *H6 *H11.
-       apply adj_same_result to H2 H4. backchain perm_trans.
-      apply IH to H6 H8 H10.
-       apply adj_swap to *H10 *H5. apply adj_swap to *H8 *H4.
-       apply adj_same_result to *H2 *H15. apply adj_same_result to *H13 *H3.
-       apply adj_preserves_perm to *H14 *H12 *H11.
-       apply perm_trans to *H16 *H18. backchain perm_trans.
-
-There are many usages of adj theorems. It might be more productive to look at the Abella interactive proof
-- see the hypotheses, and then figure out how they are manipulated. *)
+    intros A J K JJ KK H.
+    generalize dependent A.
+    induction H.
+    - intros A H. inversion H.
+    - intros.
+      rename JJ into ZZ.
+      rename KK0 into KK1.
+      rename A0 into A1.
+      rename LL into JJ.
+      rename L into J.
+      rename ZZ into LL.
+      move IHperm after H.
+      move A after IHperm.
+      move H0 after H.
+      move KK1 before JJ.
+      move LL before JJ.
+      move A1 before A.
+      move H3 before H.
+      move H1 after H2.
+      pose proof (adj_same_result_diff _ _ _ _ _ H0 H3).
+      destruct H4 as [[H4 H4b] | H4].
+      -- subst.
+         pose proof (adj_same_result _ _ _ _ H H2).
+         apply perm_sym in H4.
+         eapply perm_trans. apply H4. eapply perm_trans. apply H1. apply H4b.
+      -- destruct H4 as [KK2 H4].
+         move KK2 before KK1.
+         pose proof (adj_same_result_diff _ _ _ _ _ H H2).
+         destruct H5 as [[H5 H5a] | [KK3 H5]].
+         --- subst. apply perm_sym in H5a.
+             pose proof (perm_trans _ _ _ H5a H1).
+             pose proof (adj_same_result _ _ _ _ H0 H3).
+             eapply perm_trans; eauto.
+         ---
+             Check adj_swap.
+             pose proof (adj_swap _ _ _ _ _ H5 H2) as [U [H6 H6b]].
+             pose proof (adj_swap _ _ _ _ _ H4 H3) as [U1 [H7 H7b]].
+             Check adj_same_result.
+             pose proof (adj_same_result _ _ _ _ H0 H7b).
+             pose proof (adj_same_result _ _ _ _ H6b H).
+             Check adj_preserves_perm.
+             eapply adj_preserves_perm.
+             eauto.
+             eauto.
+             Admitted.
+  Qed.
 
   Theorem adj_perm_result : forall J K A JJ,
       perm J K ->
       adj JJ A J ->
       (exists KK, adj KK A K /\ perm JJ KK).
   Proof.
-    intros J K A JJ H1.
+    intros J K A JJ H.
     revert A. revert JJ.
-    induction H1.
+    induction H.
     - (* perm_nil *)
       intros.
       inversion H.
     - (* perm_split *)
       intros.
-      pose proof (adj_same_result_diff _ _ _ _ _ H H2) as [[H3a H3b] | [KK1 H3alt]].
-      -- subst. apply perm_sym in H1.
-         pose proof (perm_trans _ _ _ H1 H3b).
-         apply perm_sym in H3.
-         eauto.
+      pose proof (adj_same_result_diff _ _ _ _ _ H2 H) as [[H3a H3b] | [KK1 H3alt]].
       -- subst.
-         (* specialize (IHperm _ _ .) as [KK2 [IHa IHb]]. *)
-         pose proof (adj_swap _ _ _ _ _ H3alt H2) as [U [H4a H4b]].
-         Admitted.
+         pose proof (perm_trans _ _ _ H3b H1).
+         eauto.
+      -- specialize (IHperm _ _ H3alt) as [KK2 [IHa IHb]].
+         pose proof (adj_swap _ _ _ _ _ H3alt H) as [U [H3 H3b]].
+         pose proof (adj_swap _ _ _ _ _ IHa H0) as [U1 [H4 H4b]].
+         exists U1. split. auto.
+         pose proof (adj_same_result _ _ _ _ H2 H3b).
+         pose proof (adj_preserves_perm _ _ _ _ _ H3 H4 IHb).
+
+         eapply perm_trans; eauto.
+  Qed.
+
 
 
 
@@ -1139,10 +999,10 @@ End Perm.
     5. merge_sym
     6. merge_nil_perm
     7. merge_adj_1
-    8. merge_unadj_1*
+    8. merge_unadj_1
     9. merge_adj_2
     10. merge_unadj_2
-    11. merge_unadj_3*
+    11. merge_unadj_3
     12. merge_invert_1
     13. merge_invert_2
     14. merge_move_12
@@ -1168,47 +1028,13 @@ End Perm.
 Section Merge.
 
   (** ** Definition
-
       merge J K L : J union K equals L.
-
-      In abella,
   *)
 
-  (*  Define merge : olist -> olist -> olist -> prop by
-      ; merge nil nil nil
-      ; merge J K L :=
-      exists A JJ LL,
-      adj JJ A J /\ adj LL A L /\ merge JJ K LL
-      ; merge J K L :=
-      exists A KK LL,
-     adj KK A K /\ adj LL A L /\ merge J KK LL
-   *)
-
-  (** A more direct translation of [merge] retaining the existential quantifiers resluts in a problematic indcution principle. *)
-
-  (*
-      Inductive merge : list o -> list o -> list o -> Prop :=
-      | merge_nil : merge nil nil nil
-      | merge_l J K L (H : exists A JJ LL, adj JJ A J /\ adj LL A L /\ merge JJ K LL) : merge J K L
-      | merge_r J K L (H : exists A KK LL, adj KK A K /\ adj LL A L /\ merge J KK LL) : merge J K L.
-
-      Check merge_ind.
-
-      merge_ind
-      : forall P : list o -> list o -> list o -> Prop,
-       P [] [] [] ->
-       (forall J K L : list o,
-        (exists (A : o) (JJ LL : list o), adj JJ A J /\ adj LL A L /\ merge JJ K LL) ->
-        P J K L) ->
-       (forall J K L : list o,
-        (exists (A : o) (KK LL : list o), adj KK A K /\ adj LL A L /\ merge J K LL) -> P J K L) ->
-       forall l l0 l1 : list o, merge l l0 l1 -> P l l0 l1
-   *)
-
-  Inductive merge2 : list o -> list o -> list o -> Prop :=
-  | merge2_nil : merge2 nil nil nil
-  | merge2_l J K L :  (exists A JJ LL, adj JJ A J /\ adj LL A L /\ merge2 JJ K LL) -> merge2 J K L
-  | merge2_r J K L :  (exists A KK LL, adj KK A K /\ adj LL A L /\ merge2 J KK LL) -> merge2 J K L.
+  Inductive merge : list o -> list o -> list o -> Prop :=
+  | merge_nil : merge nil nil nil
+  | merge_l : forall J K L A JJ LL, adj JJ A J -> adj LL A L -> merge JJ K LL ->  merge J K L
+  | merge_r : forall J K L A KK LL, adj KK A K -> adj LL A L -> merge J KK LL -> merge J K L.
 
   Theorem perm_merge_1 : forall J K L JJ,
       merge J K L ->
@@ -1305,10 +1131,6 @@ Section Merge.
       -- apply IHmerge.
   Qed.
 
-    (** Something weird is happening, regarding induction again. There are 3 cases for the Abella proof, but not here. Also, we don't know anything about [adj K].
-      - Fixed: [remember nil]
-   *)
-
   Theorem merge_nil_perm : forall K L,
       merge nil K L -> perm K L.
   Proof.
@@ -1342,38 +1164,39 @@ Section Merge.
   Theorem merge_unadj_1 : forall J K L JJ A,
       merge J K L -> adj JJ A J -> exists LL, adj LL A L /\ merge JJ K LL.
   Proof.
-    intros. generalize dependent A. generalize dependent JJ.
-    induction H;intros.
-    - inversion H0.
-    - inversion H0;subst.
-      -- eapply adj_same_result_diff in H2.
-         --- destruct H2 as [[H2a H2b] | H2c].
-  (* induction on 1. intros. case H1.
-  case H2.
-  apply adj_same_result_diff to H2 H3. case H6.
-    apply perm_sym to *H7. apply perm_merge_1 to *H5 *H8. search.
-    apply IH to *H5 H7. apply adj_swap to H8 H4. apply adj_swap to H7 H3.
-     assert merge U1 K U. apply adj_same_result to H13 H2.
-     apply perm_merge_1 to *H14 *H15. search.
-  apply IH to H5 H2. apply adj_swap to H6 H4. assert merge JJ K U. search.
-   *)
-  Admitted.
+    intros.
+    generalize dependent JJ. generalize dependent A.
+    induction H.
+    - intros. inversion H0.
+    - intros.
+      pose proof (adj_same_result_diff _ _ _ _ _ H2 H).
+      destruct H3 as [[H3eq H3] | [KK H3]].
+      subst.
+      -- apply perm_sym in H3. pose proof (perm_merge_1 _ _ _ _ H1 H3).
+         eauto.
+      -- specialize (IHmerge _ _ H3). destruct IHmerge as [LL0 [IHa IHb]].
+         pose proof (adj_swap _ _ _ _ _ IHa H0).
+         pose proof (adj_swap _ _ _ _ _ H3 H). destruct H4 as [U [H4 H4b]]. destruct H5 as [U1 [H5 H5b]].
+         pose proof (adj_same_result _ _ _ _ H5b H2).
+         eapply perm_merge_1 in H6 as H7. exists U. eauto.
+         econstructor; solve [ eauto ].
+    - intros.
+      specialize (IHmerge _ _ H2) as [LL0 [IHa IHb]].
+      pose proof (adj_swap _ _ _ _ _ IHa H0) as [U [H3 H3a]].
+      exists U. split; eauto. econstructor; solve [ eauto ].
+  Qed.
 
   Theorem merge_adj_2 : forall A J KK K LL,
       merge J KK LL -> adj KK A K -> exists L, adj LL A L /\ merge J K L.
   Proof.
-  (* intros.
-apply adj_2_is_o to H2. apply merge_3_is_list to H1.
-apply adj_exists to *H3 *H4.
-search. *)
-  intros.
-  exists (A :: LL).
-  split.
-  - apply adj_hd.
-  - eapply merge_r.
-    -- apply H0.
-    -- apply adj_hd.
-    -- apply H.
+    intros.
+    exists (A :: LL).
+    split.
+    - apply adj_hd.
+    - eapply merge_r.
+      -- apply H0.
+      -- apply adj_hd.
+      -- apply H.
   Qed.
 
   Theorem merge_unadj_2 : forall J K L KK A,
@@ -1393,44 +1216,77 @@ search. *)
       (exists JJ, adj JJ A J /\ merge JJ K LL)
       \/ (exists KK, adj KK A K /\ merge J KK LL).
   Proof.
-
-  (* Long one:
-
-induction on 1. intros. case H1.
-  case H2.
-
-  apply adj_same_result_diff to H4 H2. case H6.
-    apply perm_merge_3 to *H5 *H7. search.
-    apply adj_swap to H7 H2. apply adj_same_result to H9 H4.
-     apply adj_perm to H10 H8. apply IH to H5 H11. case H12.
-       apply adj_swap to H13 H3.
-        assert merge U1 K LL.
-          apply adj_swap to H11 H4.
-          apply adj_same_result to H18 H2.
-          backchain perm_merge_3.
-        search.
-       apply adj_swap to H11 H4.
-        assert merge J KK2 U1.
-        apply adj_same_result to H16 H2. apply perm_merge_3 to *H17 *H18.
-        search.
-
-  apply adj_same_result_diff to H4 H2. case H6.
-    apply perm_merge_3 to *H5 *H7. search.
-    apply adj_swap to H7 H2. apply adj_same_result to H9 H4.
-     apply adj_perm to H10 H8. apply IH to H5 H11. case H12.
-       apply adj_swap to H11 H4.
-        assert merge JJ K U1.
-        apply adj_same_result to H16 H2. apply perm_merge_3 to *H17 *H18.
-        search.
-       apply adj_swap to H13 H3.
-        assert merge J U1 LL.
-          apply adj_swap to H11 H4.
-          apply adj_same_result to H18 H2.
-          backchain perm_merge_3.
-        search.
-   *)
-  Admitted.
-
+    intros.
+    generalize dependent H0.
+    revert LL.
+    revert A.
+    induction H.
+    - (* merge_nil *)
+      intros.
+      inversion H0.
+    - (* merge_l *)
+      intros.
+      pose proof (adj_same_result_diff _ _ _ _ _ H0 H2) as [[H3a H3b] | [KK H3alt]].
+      -- subst.
+         pose proof (perm_merge_3 _ _ _ _ H1 H3b).
+         eauto.
+      -- pose proof (adj_swap _ _ _ _ _ H3alt H2) as [U [H4a H4b]].
+         pose proof (adj_same_result _ _ _ _ H4b H0).
+         pose proof (adj_perm _ _ _ _ H3 H4a) as [KK1 H5].
+         specialize (IHmerge _ _ H5).
+         destruct IHmerge as [IHmerge1 | IHmerge2].
+         --- destruct IHmerge1 as [JJ0 [IHmerge1a IHmerge1b]].
+             pose proof (adj_swap _ _ _ _ _ IHmerge1a H) as [U1 [H6a H6b]].
+             left.
+             exists U1.
+             split. auto.
+             pose proof (adj_swap _ _ _ _ _ H5 H0) as [U2 [H7a H7b]].
+             pose proof (adj_same_result _ _ _ _ H7b H2).
+             eapply perm_merge_3.
+             eapply merge_l; solve [ eauto ].
+             apply H4.
+         --- destruct IHmerge2 as [JJ0 [IHmerge2a IHmerge2b]].
+             pose proof (adj_swap _ _ _ _ _ H5 H0) as [U1 [H6a H6b]].
+             pose proof (adj_same_result _ _ _ _ H6b H2).
+             right.
+             epose proof (perm_merge_3 J JJ0 _ _ _ H4).
+             exists JJ0.
+             split.
+             apply IHmerge2a.
+             apply H6.
+    - (* merge_r *)
+      intros.
+      pose proof (adj_same_result_diff _ _ _ _ _ H2 H0) as [[H3a H3b] | [KK0 H3alt]].
+      -- subst. apply perm_sym in H3b.
+         pose proof (perm_merge_3 _ _ _ _ H1 H3b).
+         eauto.
+      -- pose proof (adj_swap _ _ _ _ _ H3alt H0) as [U [H3 H3b]].
+         pose proof (adj_same_result _ _ _ _ H3b H2).
+         pose proof (adj_perm _ _ _ _ H4 H3) as [KK2 H5].
+         specialize (IHmerge _ _ H3alt) as [IHmerge | IHmergealt].
+         --- destruct IHmerge as [JJ [IHa IHb]].
+             pose proof (adj_swap _ _ _ _ _ H5 H2) as [U1 [H6a H6b]].
+             pose proof (adj_same_result _ _ _ _ H6b H0).
+             left.
+             exists JJ.
+             split. apply IHa.
+             epose proof (perm_merge_3 JJ K _ LL0 _ H4).
+             apply H7.
+         --- destruct IHmergealt as [KK3 [IHa IHb]].
+             pose proof (adj_swap _ _ _ _ _ IHa H) as [U1 [H6 H6b]].
+             right. exists U1. split.
+             apply H6b.
+             eapply perm_merge_3.
+             eapply merge_r.
+             apply H6.
+             apply H3.
+             apply IHb.
+             apply H4.
+             (* cleanup *)
+             Unshelve.
+             econstructor; solve [ eauto ].
+             econstructor; solve [ eauto ].
+  Qed.
 
   (** *** Consequences of merge and adj *)
   Theorem merge_invert_1 : forall A JJ J K LL L,
@@ -1581,6 +1437,7 @@ induction on 1. intros. case H1.
     - (* merge_left *)
       pose proof (merge_unadj_1 _ _ _ _ _ H3 H) as [X [H5a H5b]].
       pose proof (merge_unadj_1 _ _ _ _ _ H4 H0) as [Y [H6a H6b]].
+      (* econstructor; solve [ eauto ]. *)
       eapply perm_split.
       apply H5a.
       apply H6a.
@@ -1589,24 +1446,11 @@ induction on 1. intros. case H1.
       pose proof (merge_unadj_1 _ _ _ _ _ H2 H) as [X [H5a H5b]].
       pose proof (merge_unadj_1 _ _ _ _ _ H4 H0) as [Y [H6a H6b]].
       pose proof (merge_unadj_2 _ _ _ _ _ H3 H5a) as [Z [H7a H7b]].
+      (* econstructor; solve [ eauto ] *)
       eapply perm_split.
       apply H7a.
       apply H6a.
       apply (IHmerge _ _ _ _ H5b H7b H6b).
-  (* induction on 1. intros. case H1.
-    apply merge_nil_perm to *H2. apply merge_nil_perm to *H3. apply merge_nil_perm to *H4.
-    backchain perm_trans with K = L. backchain perm_sym. backchain perm_trans.
-
-    apply merge_unadj_1 to *H4 H6.
-    apply merge_unadj_1 to *H3 H5.
-    apply IH to *H7 *H2 *H11 *H9.
-    search.
-
-    apply merge_unadj_1 to *H2 H5.
-    apply merge_unadj_1 to *H4 H6.
-    apply merge_unadj_2 to *H3 H8.
-    apply IH to *H7 *H9 *H13 *H11.
-    search. *)
   Qed.
 
   Theorem change_merge_order : forall J K L JK KL JKL,
@@ -1618,12 +1462,6 @@ induction on 1. intros. case H1.
     pose proof (merge_assoc _ _ _ _ _ _ _ H0 H1 H2 H).
     apply (perm_merge_3 _ _ _ _ H2 H3).
   Qed.
-  (* intros.
-    apply merge_1_is_list to H2. apply merge_3_is_list to H3.
-    apply merge_exists to H4 H5.
-    apply merge_assoc to H2 H3 H6 H1.
-    apply perm_merge_3 to H6 H7.
-    search. *)
 
   Theorem change_merge_order2 : forall J K JK L KL JKL,
       merge J K JK -> merge K L KL -> merge J KL JKL ->
@@ -1635,11 +1473,6 @@ induction on 1. intros. case H1.
     apply perm_sym in H3.
     apply (perm_merge_3 _ _ _ _ H2 H3).
   Qed.
-  (* intros.
-  apply merge_3_is_list to H1. apply merge_2_is_list to H2.
-  apply merge_exists to *H4 *H5.
-  apply merge_assoc to *H1 *H2 *H3 H6. apply perm_sym to *H7.
-  backchain perm_merge_3. *)
 
   Theorem merge_perm_det : forall J K L1 L2,
       merge J K L1 ->
@@ -1665,17 +1498,9 @@ induction on 1. intros. case H1.
       apply H0.
       apply H3a.
       apply IHmerge.
-  (* induction on 1. intros. case H1.
-    backchain merge_nil_perm.
-    apply merge_unadj_1 to H2 H3.
-    apply IH to H5 H7.
-    search.
-    apply merge_unadj_2 to H2 H3.
-    apply IH to H5 H7.
-    search. *)
   Qed.
 
-  Theorem merge_preserves_perm_lem : forall L LL J K,
+  Theorem merge_preserves_perm : forall L LL J K,
       merge L J K ->
       merge LL J K ->
       perm L LL.
@@ -1694,26 +1519,6 @@ induction on 1. intros. case H1.
       pose proof (perm_merge_3 _ _ _ _ H2b H2).
       apply (IHJ _ _ _ H3 H3b).
   Qed.
-  (* induction on 1. intros. case H1.
-    apply merge_sym to H2. apply merge_nil_perm to *H4.
-    apply merge_sym to H3. apply merge_nil_perm to *H6.
-    apply perm_sym to *H7. backchain perm_trans.
-    apply merge_unadj_2 to H2 _. apply merge_unadj_2 to H3 _.
-    apply adj_same_result to H8 H6.
-    apply perm_merge_3 to *H9 *H10.
-    apply IH to *H5 *H7 *H11. search. *)
-
-  (** What's the point of this since we don't have an "is_list" requirement unlike the abella version? *)
-  Theorem merge_preserves_perm : forall L LL J K,
-      merge L J K ->
-      merge LL J K ->
-      perm L LL.
-  Proof.
-    intros.
-    apply (merge_preserves_perm_lem _ _ _ _ H H0).
-  Qed.
-  (* intros. apply merge_2_is_list to H1.
-    backchain merge_preserves_perm_lem. *)
 
   (** Apparently needs a better name *)
   Theorem merge_sub : forall J K L JK JL JKL,
@@ -1732,18 +1537,6 @@ induction on 1. intros. case H1.
     pose proof (merge_preserves_perm _ _ _ _ H5 H1).
     apply (perm_merge_3 _ _ _ _ H2 H6).
   Qed.
-  (* intros.
-    apply merge_1_is_list to H1. apply merge_2_is_list to H2.
-    apply merge_exists to H4 H5.
-    apply merge_sym to H1.
-    apply merge_2_is_list to H1. apply merge_3_is_list to H6.
-    apply merge_exists to H8 H9.
-    apply merge_assoc to H7 H6 H10 H2.
-    apply merge_sym to H10.
-    apply perm_merge_3 to H12 H11.
-    apply merge_preserves_perm to H13 H3.
-    apply perm_merge_3 to H6 H14.
-    search. *)
 
   Theorem merge_to_adj : forall J L A,
       merge J (A :: nil) L ->
@@ -1774,10 +1567,6 @@ induction on 1. intros. case H1.
       apply H1.
       apply H0.
   Qed.
-  (* induction on 1. intros. case H1.
-    apply IH to H4. apply adj_swap to H6 H3. search.
-    apply adj_det to H2. apply merge_sym to H4.
-    apply merge_nil_perm to H5. search. *)
 
   Theorem merge_same_result_diff : forall J A K B L,
       merge J (A :: nil) L ->
@@ -1801,15 +1590,6 @@ induction on 1. intros. case H1.
       exists X.
       apply (perm_merge_3 _ _ _ _ H2 H1a).
   Qed.
-  (* intros.
-    apply merge_to_adj to H1.
-    apply merge_to_adj to H2.
-    apply adj_same_result_diff to H4 H6.
-    case H7.
-    apply perm_trans to H3 H8. apply perm_sym to H5.
-    apply perm_trans to H9 H10. search.
-    apply adj_implies_merge to H8. apply perm_sym to H5.
-    apply perm_merge_3 to H9 H10. search. *)
 
   (** *** Subsets via merge
 
