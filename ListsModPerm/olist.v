@@ -1,4 +1,3 @@
-
 (** *  Lists
     Coq version of [abella-reasoning/lib/list.thm]
  *)
@@ -147,7 +146,7 @@ Module Type OList (ELT : Eqset_dec).
       assert (H1 : exists L1, append_rel K [A] L1).
       {
         exists (K ++ [A]). apply append_append_rel.
-xs      }
+      }
       destruct H1 as [L1].
       exists L1.
       apply rev_cons.
@@ -256,17 +255,9 @@ Section Perm.
   | adj_hd : forall L A, adj L A (A :: L)
   | adj_tl : forall B K A L, adj K A L -> adj (B :: K) A (B :: L).
 
-
-  (** Note:
-      The abella library did not have these commutativity stuff.
-      I needed it to prove some theorems, particularly example [adj_1_23_321]. *)
-
-  Theorem adj_cons_comm_1 : forall A B K C L, adj (A :: B :: K) C L -> adj (B :: A :: K) C L.
-  Admitted.
-
-
-  Theorem adj_cons_comm_2 : forall A B K C L, adj K C (A :: B :: L) -> adj K C (B :: A :: L).
-  Admitted. 
+  (** Constructor database *)
+  Hint Constructors append_rel : my_db.
+  Hint Constructors adj : my_db.
 
   (** *** Examples of adj *)
 
@@ -275,7 +266,7 @@ Section Perm.
     adj ([o2 ; o3]) o1 ([o1 ; o2 ; o3]).
   Proof.
     intros.
-    apply adj_hd.
+    eauto with my_db.
   Qed.
 
   Example adj_1_23_213 :
@@ -287,19 +278,10 @@ Section Perm.
     apply adj_hd.
   Qed.
 
-  Example adj_1_23_321 : forall o1 o2 o3,
-      adj ([o2 ; o3]) o1 ([o3 ; o2 ; o1]).
-  Proof.
-    intros.
-    apply adj_cons_comm_1.
-    apply adj_tl.
-    apply adj_tl.
-    apply adj_hd.
-  Qed.
-
   Theorem adj_exists : forall A L, exists M, adj L A M.
   Proof.
     intros.
+    (* eauto with my_db *)
     exists (A :: L).
     apply adj_hd.
   Qed.
@@ -307,25 +289,16 @@ Section Perm.
   Theorem adj_tl_inv : forall B K A L, adj (B :: K) A (B :: L) -> adj K A L.
   Proof.
     intros.
-    inversion H;subst.
+    inversion H; subst. (*; eauto with my_db.*)
     - apply adj_hd.
     - apply H3.
-  Qed.
-
-  Theorem adj_L_is_A_cons_K : forall B K A L, adj K A L -> adj (A :: K) B (B :: L).
-  Proof.
-    intros.
-    induction H.
-    - apply adj_hd.
-    - apply adj_cons_comm_1. apply adj_cons_comm_2. apply adj_tl. apply IHadj.
   Qed.
 
   Theorem adj_swap : forall A J K B L, adj J A K -> adj K B L -> exists U, adj J B U /\ adj U A L.
   Proof.
     intros. generalize dependent J.
     induction H0;intros.
-    - (* case on J A ~ L *)
-      inversion H;subst.
+    - inversion H; subst. (*; eauto with my_db. *)
       -- exists (A0 :: J).
          split.
          --- apply adj_hd.
@@ -334,11 +307,10 @@ Section Perm.
          split.
          --- apply adj_hd.
          --- apply adj_tl. apply H.
-    - inversion H;subst.
-      -- exists (A0 :: K).
-         split.
-         --- apply adj_hd.
-         --- apply adj_L_is_A_cons_K. apply H0.
+    - inversion H; subst. (*; eauto with my_db.
+      specialize (IHadj _ H4) as [U [IHa IHb]].
+      eauto with my_db. *)
+      -- exists L. split. apply H0. apply adj_hd.
       -- apply IHadj in H4. destruct H4 as [X [H4a H4b]].
          exists (B :: X).
          split.
@@ -359,21 +331,12 @@ Section Perm.
       append_rel K L KL ->
       exists JL, append_rel J L JL /\ adj JL A KL.
   Proof.
-    intros. generalize dependent L. generalize dependent KL.
-    induction H;intros.
-    - inversion H0;subst.
-      exists (L ++ L0).
-      split.
-      apply append_append_rel.
-      apply append_rel_append in H4. rewrite H4. apply adj_hd.
-    - inversion H0;subst.
-      apply append_rel_append in H0. inversion H0. subst.
-      edestruct IHadj as [X].
-      -- apply H5.
-      -- destruct H1. exists (B :: X).
-         split.
-         --- apply append_cons. apply H1.
-         --- apply adj_tl. apply H2.
+    intros. generalize dependent L. revert KL.
+    induction H; intros.
+    - inversion H0; subst; eauto with my_db.
+    - inversion H0; subst.
+      apply IHadj in H5 as [X [IHa IHb]].
+      info_eauto with my_db.
   Qed.
 
 
@@ -383,23 +346,15 @@ Section Perm.
       exists KL, append_rel K L KL /\ adj JL A KL.
   Proof.
     intros. generalize dependent L. generalize dependent JL.
-    induction H;intros.
-    (* adj_hd? : J = L, K = A :: L*)
-    - inversion H0;subst.
-      -- exists ([A] ++ JL). split.
-         --- apply append_append_rel.
-         --- simpl. apply adj_hd.
-      -- exists ((A :: e :: J) ++ L0).
-         split.
-         --- apply append_append_rel.
-         --- apply append_rel_append in H. subst. simpl. apply adj_hd.
+    induction H; intros.
+    (* adj_hd *)
+    - inversion H0; subst.
+      eauto with my_db.
+      -- eauto with my_db.
     (* adj_tl  *)
-    - inversion H0;subst. edestruct IHadj as [X].
-      -- apply H5.
-      -- exists ((B :: L) ++ L0). split.
-         --- apply append_append_rel.
-         --- destruct H1. apply append_rel_append in H1. subst.
-             simpl. apply adj_tl. apply H2.
+    - inversion H0; subst.
+      apply IHadj in H5 as [KL [IHa IHb]].
+      eauto with my_db.
   Qed.
 
   (** ** Perm *)
@@ -411,23 +366,17 @@ Section Perm.
                                      perm KK LL ->
                                      perm K L.
 
+  Hint Constructors perm : my_db.
+
   (** *** Examples of [perm] *)
 
   Example perm_123_321 :
     forall o1 o2 o3, perm [o1 ; o2 ; o3] [o3 ; o2 ; o1].
   Proof.
-    intros.
-    eapply perm_split.
-    - apply adj_tl. apply adj_tl. apply adj_hd.
-    - apply adj_hd.
-    - eapply perm_split; repeat split.
-      -- apply adj_hd.
-      -- apply adj_tl. apply adj_hd.
-      -- eapply perm_split; repeat split.
-         --- apply adj_hd.
-         --- apply adj_hd.
-         --- apply perm_nil.
+    intros. eauto 9 with my_db.
   Qed.
+
+
 
   (** ** [Perm] theorems *)
 
@@ -435,28 +384,17 @@ Section Perm.
   Proof.
     intros.
     induction H.
-    - apply perm_nil.
-    - eapply perm_split. repeat split.
-      -- apply H0.
-      -- apply H.
-      -- apply IHperm.
+    - eauto with my_db.
+    - info_eauto with my_db.
   Qed.
 
   Theorem perm_refl : forall L, perm L L.
   Proof.
     intros.
-    induction L.
-    - apply perm_nil.
-    - inversion IHL;subst.
-      -- eapply perm_split.
-         --- assert (H : adj [] a [a]). { apply adj_hd. } apply H.
-         --- assert (H : adj [] a [a]). { apply adj_hd. } apply H.
-         --- apply perm_nil.
-      -- eapply perm_split.
-         --- apply adj_hd.
-         --- apply adj_hd.
-         --- apply IHL.
+    induction L; eauto with my_db.
   Qed.
+
+  Hint Immediate perm_refl : my_db.
 
   Theorem perm_cons_1 : forall A K L,
       perm (A :: K) L ->
@@ -480,13 +418,7 @@ Section Perm.
          destruct IHperm as [J [IHa IHb]].
          destruct Heq.
          pose proof (adj_swap _ _ _ _ _ IHa H0)  as [U [H6a H6b]].
-         exists U.
-         split. apply H6b.
-         (* econstructor; solve [eauto]. *)
-         eapply perm_split.
-         apply H5.
-         apply H6a.
-         apply IHb.
+         info_eauto with my_db.
   Qed.
 
   Theorem perm_cons_2 : forall A K L,
@@ -497,10 +429,8 @@ Section Perm.
     apply perm_sym in H.
     eapply perm_cons_1 in H.
     destruct H as [J' [H1 H2]].
-    exists J'.
-    split.
-    - apply H1.
-    - apply perm_sym. apply H2.
+    apply perm_sym in H2.
+    eauto with my_db.
   Qed.
 
   Theorem adj_preserves_perm : forall A JJ J KK K,
@@ -510,12 +440,11 @@ Section Perm.
       perm J K.
   Proof.
     intros.
-    eapply perm_split.
-    apply H. apply H0. apply H1.
+    eauto with my_db.
   Qed.
 
   (* todo: clean *)
-  Theorem perm_trans_lem : forall J K L, perm J K -> perm K L -> perm J L.
+  Theorem perm_trans : forall J K L, perm J K -> perm K L -> perm J L.
   Proof.
     intros J K. generalize dependent J.
     induction K as [ | A L1 IH]; intros.
@@ -566,38 +495,12 @@ Section Perm.
           apply H3a.
   Qed.
 
-  Theorem perm_trans : forall J K L, perm J K -> perm K L -> perm J L.
-  Proof.
-    intros.
-    eapply perm_trans_lem.
-    apply H.
-    apply H0.
-  Qed.
-
   Theorem adj_same_source : forall J A K L,
       adj J A K -> adj J A L ->
       perm K L.
   Proof.
     intros.
-    inversion H;inversion H0;subst.
-    - apply perm_refl.
-    - (* econstructor; solve [ eauto; try apply perm_refl ]. *)
-      eapply perm_split.
-      -- apply H.
-      -- apply H0.
-      -- apply perm_refl.
-    - eapply perm_split.
-      -- apply adj_hd.
-      -- apply adj_tl. apply adj_hd.
-      -- eapply perm_split.
-         --- apply H1.
-         --- apply adj_hd.
-         --- apply perm_refl.
-    - inversion H6;subst.
-      eapply perm_split.
-      apply H.
-      apply H0.
-      apply perm_refl.
+    inversion H; inversion H0; subst; info_eauto with my_db.
   Qed.
 
   Theorem adj_same_result : forall J K A L,
@@ -607,21 +510,8 @@ Section Perm.
   Proof.
     intros. generalize dependent K.
     induction H;intros.
-    - inversion H0;subst.
-      -- apply perm_refl.
-      -- eapply perm_split.
-         --- apply H3.
-         --- apply adj_hd.
-         --- apply perm_refl.
-    - inversion H0;subst.
-      -- eapply perm_split.
-         --- apply adj_hd.
-         --- apply H.
-         --- apply perm_refl.
-      -- eapply perm_split.
-         --- apply adj_hd.
-         --- apply adj_hd.
-         --- apply IHadj in H4. apply H4.
+    - inversion H0; subst; eauto with my_db.
+    - inversion H0; subst; info_eauto with my_db.
   Qed.
 
   Theorem adj_same_result_diff : forall J A K B L,
@@ -632,22 +522,12 @@ Section Perm.
   Proof.
     intros. generalize dependent K. generalize dependent B.
     induction H; intros.
-    - inversion H0;subst.
-      -- left. split. reflexivity. apply perm_refl.
-      -- right. exists K0. apply adj_hd.
-    - inversion H0;subst.
-      -- right. exists K. apply H.
-      -- apply IHadj in H4. destruct H4 as [[H4a1 H4a2] | H4b1];subst.
-         --- left. split.  reflexivity.
-             eapply perm_split.
-             ---- apply adj_hd.
-             ---- apply adj_hd.
-             ---- apply H4a2.
-         --- destruct H4b1 as [X].
-             right.
-             exists (B :: X).
-             apply adj_tl.
-             apply H1.
+    - inversion H0; subst; eauto with my_db.
+    - inversion H0; subst.
+      -- eauto with my_db.
+      -- apply IHadj in H4 as [[H4a1 H4a2] | [X H4b1]]; subst.
+         --- eauto with my_db.
+         --- eauto with my_db.
   Qed.
 
   Theorem adj_same_result_diff_both : forall J A K B L,
@@ -657,34 +537,15 @@ Section Perm.
         exists JJ KK, adj JJ B J /\ adj KK A K /\ perm JJ KK.
   Proof.
     intros. generalize dependent K.
-    induction H;intros.
+    induction H; intros.
+    - inversion H0; subst.
+      -- eauto with my_db.
+      -- eauto 6 with my_db.
     - inversion H0;subst.
-      -- left. split. reflexivity. apply perm_refl.
-      -- right. exists K0. exists K0. repeat split.
-         --- apply H3.
-         --- apply adj_hd.
-         --- apply perm_refl.
-    - inversion H0;subst.
-      -- right. exists K. exists K. repeat split.
-         --- apply adj_hd.
-         --- apply H.
-         --- apply perm_refl.
-      -- apply IHadj in H4 as [[IHa1 IHa2] | IHb].
-         --- inversion IHa2;subst.
-             ---- left. split. reflexivity. apply perm_refl.
-             ---- left. split. reflexivity. eapply perm_split.
-                  ----- apply adj_hd.
-                  ----- apply adj_hd.
-                  ----- apply IHa2.
-         --- destruct IHb as [X [Y [IHb1 [IHb2 IHb3]]]].
-             right. exists (B0 :: X). exists (B0 :: Y).
-             repeat split.
-             ---- apply adj_tl. apply IHb1.
-             ---- apply adj_tl. apply IHb2.
-             ---- eapply perm_split.
-                  ----- apply adj_hd.
-                  ----- apply adj_hd.
-                  ----- apply IHb3.
+      -- eauto 6 with my_db.
+      -- apply IHadj in H4 as [[IHa1 IHa2] | [X [Y [IHb1 [IHb2 IHb3]]]]].
+         --- inversion IHa2; subst; eauto 6 with my_db.
+         --- eauto 9 with my_db.
   Qed.
 
   Theorem perm_invert : forall A J K JJ KK,
@@ -694,50 +555,33 @@ Section Perm.
       perm JJ KK.
   Proof.
     intros A J K JJ KK H.
-    generalize dependent A.
+    generalize dependent A. generalize dependent JJ. generalize dependent KK.
     induction H.
-    - intros A H. inversion H.
+    - intros. inversion H.
     - intros.
-      rename JJ into ZZ.
-      rename KK0 into KK1.
-      rename A0 into A1.
-      rename LL into JJ.
-      rename L into J.
-      rename ZZ into LL.
-      move IHperm after H.
-      move A after IHperm.
-      move H0 after H.
-      move KK1 before JJ.
-      move LL before JJ.
-      move A1 before A.
-      move H3 before H.
-      move H1 after H2.
-      pose proof (adj_same_result_diff _ _ _ _ _ H0 H3).
+      pose proof (adj_same_result_diff _ _ _ _ _ H2 H).
       destruct H4 as [[H4 H4b] | H4].
       -- subst.
-         pose proof (adj_same_result _ _ _ _ H H2).
+         pose proof (adj_same_result _ _ _ _ H3 H0).
          apply perm_sym in H4.
-         eapply perm_trans. apply H4. eapply perm_trans. apply H1. apply H4b.
+         eapply perm_trans. apply H4b. eapply perm_trans. apply H1. apply H4.
       -- destruct H4 as [KK2 H4].
-         move KK2 before KK1.
-         pose proof (adj_same_result_diff _ _ _ _ _ H H2).
+         pose proof (adj_same_result_diff _ _ _ _ _ H3 H0).
          destruct H5 as [[H5 H5a] | [KK3 H5]].
-         --- subst. apply perm_sym in H5a.
-             pose proof (perm_trans _ _ _ H5a H1).
-             pose proof (adj_same_result _ _ _ _ H0 H3).
+         --- subst.
+             apply perm_sym in H5a.
+             pose proof (perm_trans _ _ _ H1 H5a).
+             pose proof (adj_same_result _ _ _ _ H2 H).
              eapply perm_trans; eauto.
          ---
-             Check adj_swap.
-             pose proof (adj_swap _ _ _ _ _ H5 H2) as [U [H6 H6b]].
-             pose proof (adj_swap _ _ _ _ _ H4 H3) as [U1 [H7 H7b]].
-             Check adj_same_result.
-             pose proof (adj_same_result _ _ _ _ H0 H7b).
-             pose proof (adj_same_result _ _ _ _ H6b H).
-             Check adj_preserves_perm.
-             eapply adj_preserves_perm.
-             eauto.
-             eauto.
-             Admitted.
+             specialize (IHperm _ _ _ H4 H5).
+             pose proof (adj_swap _ _ _ _ _ H5 H0) as [U [H6 H6b]].
+             pose proof (adj_swap _ _ _ _ _ H4 H) as [U1 [H7 H7b]].
+             pose proof (adj_same_result _ _ _ _ H2 H7b).
+             pose proof (adj_same_result _ _ _ _ H6b H3).
+             pose proof (adj_preserves_perm _ _ _ _ _ H7 H6 IHperm).
+             pose proof (perm_trans _ _ _ H8 H10).
+             eapply perm_trans; eauto.
   Qed.
 
   Theorem adj_perm_result : forall J K A JJ,
@@ -763,12 +607,8 @@ Section Perm.
          exists U1. split. auto.
          pose proof (adj_same_result _ _ _ _ H2 H3b).
          pose proof (adj_preserves_perm _ _ _ _ _ H3 H4 IHb).
-
-         eapply perm_trans; eauto.
+         apply (perm_trans _ _ _ H5 H6); info_eauto.
   Qed.
-
-
-
 
   Theorem adj_perm_source : forall J K A L,
       perm J K ->
@@ -776,26 +616,20 @@ Section Perm.
       exists LL, adj K A LL /\ perm L LL.
   Proof.
     intros.
-    exists (A :: K).
-    split.
-    - apply adj_hd.
-    - eapply perm_split.
-      -- apply H0.
-      -- apply adj_hd.
-      -- apply H.
+    eauto with my_db.
   Qed.
 
   Theorem adj_nil_1 : forall A L,
       adj nil A L -> L = A :: nil.
   Proof.
-    intros. inversion H;subst. reflexivity.
+    intros. inversion H; subst. reflexivity.
   Qed.
 
   Theorem perm_nil_1 : forall L,
       perm nil L -> L = nil.
   Proof.
     intros.
-    inversion H;subst.
+    inversion H; subst.
     - reflexivity.
     - inversion H0.
   Qed.
@@ -832,20 +666,16 @@ Section Perm.
   Proof.
     intros. generalize dependent JJ. generalize dependent KK.
     induction H;intros.
-    - inversion H0;subst.
-      -- exists KK. split.
-         --- apply append_nil.
-         --- apply H1.
+    - (* append_nil *)
+      inversion H0;subst.
+      -- eauto with my_db.
       -- inversion H.
-    - apply perm_cons_1 in H0 as [J2 [H0a H0b]].
-      apply IHappend_rel with (JJ := J2) in H1.
-      destruct H1 as [LL [H1a H1b]].
-      eapply adj_1_append in H0a.
-      destruct H0a as [KL [H0aa H0ab]].
-      exists KL. split. apply H0aa.
-      eapply perm_split. apply adj_hd. apply H0ab. apply H1b. apply H1a. apply H0b.
+    - (* append_cons *)
+      apply perm_cons_1 in H0 as [J2 [H0a H0b]].
+      specialize (IHappend_rel _ H1 _ H0b) as [LL [H2 H2b]].
+      pose proof (adj_1_append _ _ _ _ _ H0a H2) as [KL [H0aa H0ab]].
+      eauto with my_db.
   Qed.
-      
 
   Theorem adj_perm : forall J K JJ A,
       perm J K ->
@@ -857,9 +687,8 @@ Section Perm.
     - apply perm_cons_1 in H as [X [Ha Hb]]. exists X. apply Ha.
     - apply perm_cons_1 in H as [X [Ha Hb]].
       apply IHadj in Hb as [KK'].
-      eapply adj_swap in Ha as [U [Ha1 Ha2]].
+      pose proof (adj_swap _ _ _ _ _ H Ha) as [U [Ha1 Ha2]].
       exists U. apply Ha2.
-      apply H.
   Qed.
 
   Theorem adj_perm_full : forall J K JJ A,
@@ -868,21 +697,12 @@ Section Perm.
       exists KK, adj KK A K /\ perm JJ KK.
   Proof.
     intros. generalize dependent K.
-    induction H0;intros;eapply perm_cons_1 in H as [X [Ha Hb]].
-    - exists X. split.
-      -- apply Ha.
-      -- apply Hb.
-    - apply IHadj in Hb as [KK' [IHadj1 IHadj2]].
-      eapply adj_swap in Ha.
-      -- destruct Ha as [U [Ha1 Ha2]].
-         exists U.
-         split.
-         --- apply Ha2.
-         --- eapply perm_split.
-             ---- apply adj_hd.
-             ---- apply Ha1.
-             ---- apply IHadj2.
-      --  apply IHadj1.
+    induction H0; intros.
+    - apply perm_cons_1 in H as [X [Ha Hb]]. eauto with my_db.
+    - apply perm_cons_1 in H as [X [Ha Hb]].
+      apply IHadj in Hb as [KK' [IHadj1 IHadj2]].
+      pose proof (adj_swap _ _ _ _ _ IHadj1 Ha) as [U [Ha1 Ha2]].
+      eauto with my_db.
   Qed.
 
   (** ** Set-theoretic semantics of [adj] *)
@@ -909,27 +729,23 @@ Section Perm.
   | member_hd  : forall A L, member A (A :: L)
   | member_tl  : forall A B L, member A L -> member A (B :: L).
 
+  Hint Constructors member : my_db.
+
   Theorem adj_member : forall J A L,
       adj J A L -> member A L.
   Proof.
     intros.
-    induction H.
-    - apply member_hd.
-    - apply member_tl. apply IHadj.
+    induction H; eauto with my_db.
   Qed.
 
   Theorem member_adj : forall A L,
       member A L -> exists J, adj J A L.
   Proof.
     intros.
-    induction H. 
-    - exists L. apply adj_hd.
-    - inversion H;subst.
-      -- exists (B :: L0). apply adj_tl. apply adj_hd.
-      -- destruct IHmember as [X].
-         exists (B :: X).
-         apply adj_tl.
-         apply H1.
+    induction H.
+    - eauto with my_db.
+    - destruct IHmember as [X].
+      inversion H; subst; eauto with my_db.
   Qed.
 
   Theorem member_adj_rel : forall JJ A J B,
@@ -938,35 +754,27 @@ Section Perm.
   Proof.
     intros. generalize dependent B.
     induction H;intros.
-    - inversion H0;subst;auto.
-    - inversion H0;subst.
+    - inversion H0; subst; auto.
+    - specialize (IHadj B0).
+      inversion H0; subst.
       -- right. apply member_hd.
-      -- destruct IHadj with (B := B0).
-         --- apply H3.
-         --- left. apply H1.
-         --- right. apply member_tl. apply H1.
+      -- apply IHadj in H3 as [H3a | H3b]; subst.
+         --- auto.
+         --- eauto with my_db.
   Qed.
 
   Theorem adj_preserves_member_lem : forall A J B L,
       member A J -> adj J B L -> member A L.
   Proof.
     intros. generalize dependent B. generalize dependent L.
-    induction H;intros.
-    - inversion H0;subst.
-      -- apply member_tl. apply member_hd.
-      -- apply member_hd.
-    - inversion H0;subst.
-      -- apply member_tl. apply member_tl. apply H.
-      -- apply member_tl. eapply IHmember. apply H5.
+    induction H; intros; inversion H0; subst; eauto with my_db.
   Qed.
 
   Theorem adj_preserves_member : forall A J B L,
       member A J -> adj J B L -> member A L.
   Proof.
     intros.
-    eapply adj_preserves_member_lem.
-    apply H.
-    apply H0.
+    apply (adj_preserves_member_lem _ _ _ _ H H0).
   Qed.
 
   Theorem perm_preserves_member : forall A K L,
@@ -974,7 +782,7 @@ Section Perm.
       member A K -> member A L.
   Proof.
     intros. generalize dependent L.
-    induction H0;intros;eapply perm_cons_1 in H as [X [Ha Hb]].
+    induction H0; intros; eapply perm_cons_1 in H as [X [Ha Hb]].
     - eapply adj_member.
       apply Ha.
     - apply IHmember in Hb.
@@ -991,7 +799,7 @@ End Perm.
  *)
 
 (** ** Contains:
-<<
+
     1. merge
     2. perm_merge_1
     3. perm_merge_2
@@ -1022,7 +830,7 @@ End Perm.
     28. merge_sub
     29. merge_to_adj
     30. merge_same_result_diff
->>
+
  *)
 
 Section Merge.
@@ -1036,6 +844,10 @@ Section Merge.
   | merge_l : forall J K L A JJ LL, adj JJ A J -> adj LL A L -> merge JJ K LL ->  merge J K L
   | merge_r : forall J K L A KK LL, adj KK A K -> adj LL A L -> merge J KK LL -> merge J K L.
 
+  Hint Constructors adj : my_db.
+  Hint Constructors perm : my_db.
+  Hint Constructors merge : my_db.
+
   Theorem perm_merge_1 : forall J K L JJ,
       merge J K L ->
       perm J JJ ->
@@ -1044,22 +856,12 @@ Section Merge.
     intros. generalize dependent JJ.
     induction H;intros.
     - apply perm_nil_1 in H0. subst. apply merge_nil.
-    - eapply adj_perm in H2 as H3.
-      destruct H3 as [X].
-      eapply perm_invert in H3 as H4.
+    - pose proof  (adj_perm _ _ _ _ H2 H) as [X H3].
+      pose proof (perm_invert _ _ _ _ _ H2 H H3).
       -- eapply IHmerge in H4.
-         eapply merge_l.
-         apply H3.
-         apply H0.
-         apply H4.
-      -- apply H2.
-      -- apply H.
-      -- apply H.
-    - eapply IHmerge in H2.
-      eapply merge_r.
-      apply H.
-      apply H0.
-      apply H2.
+         eauto with my_db.
+    - apply IHmerge in H2.
+      eauto with my_db.
   Qed.
 
   Theorem perm_merge_2 : forall J K L KK,
@@ -1069,23 +871,13 @@ Section Merge.
   Proof.
     intros. generalize dependent KK.
     induction H;intros.
-    - apply perm_nil_1 in H0;subst. apply merge_nil.
-    - eapply IHmerge in H2.
-      eapply merge_l.
-      -- apply H.
-      -- apply H0.
-      -- apply H2.
-    - eapply adj_perm in H as H3.
-      -- destruct H3 as [KK2].
-         eapply perm_invert in H3 as H4.
-         --- eapply IHmerge in H4.
-             eapply merge_r.
-             ---- apply H3.
-             ---- apply H0.
-             ---- apply H4.
-         --- apply H2.
-         --- apply H.
-      -- apply H2.
+    - apply perm_nil_1 in H0. subst. apply merge_nil.
+    - apply IHmerge in H2.
+      eauto with my_db.
+    - pose proof (adj_perm _ _ _ _ H2 H) as [KK2 H3].
+      pose proof (perm_invert _ _ _ _ _ H2 H H3).
+      apply IHmerge in H4.
+      eauto with my_db.
   Qed.
 
   Theorem perm_merge_3 : forall J K L LL,
@@ -1095,23 +887,13 @@ Section Merge.
   Proof.
     intros. generalize dependent LL.
     induction H;intros.
-    - apply perm_nil_1 in H0;subst. apply merge_nil.
-    - eapply adj_perm_result in H2 as H0a.
-      -- destruct H0a as [KK [H3 H4]].
-         eapply IHmerge in H4 as H5.
-         eapply merge_l.
-         --- apply H.
-         --- apply H3.
-         --- apply H5.
-      -- apply H0.
-    - eapply adj_perm_result in H2 as H0a.
-      -- destruct H0a as [KK' [H3 H4]].
-         eapply IHmerge in H4 as H5.
-         eapply merge_r.
-         --- apply H.
-         --- apply H3.
-         --- apply H5.
-      -- apply H0.
+    - apply perm_nil_1 in H0. subst. apply merge_nil.
+    - pose proof (adj_perm_result _ _ _ _ H2 H0) as [KK [H3 H4]].
+      specialize (IHmerge _ H4).
+      eauto with my_db.
+    - pose proof (adj_perm_result _ _ _ _ H2 H0) as [KK' [H3 H4]].
+      specialize (IHmerge _ H4).
+      eauto with my_db.
   Qed.
 
   Theorem merge_sym : forall J K L,
@@ -1119,16 +901,7 @@ Section Merge.
       merge K J L.
   Proof.
     intros.
-    induction H.
-    - apply merge_nil.
-    - eapply merge_r.
-      -- apply H.
-      -- apply H0.
-      -- apply IHmerge.
-    - eapply merge_l.
-      -- apply H.
-      -- apply H0.
-      -- apply IHmerge.
+    induction H; eauto with my_db.
   Qed.
 
   Theorem merge_nil_perm : forall K L,
@@ -1140,10 +913,7 @@ Section Merge.
     - subst.
       inversion H.
     - apply IHmerge in Heql as IH.
-      eapply perm_split.
-      -- apply H.
-      -- apply H0.
-      -- apply IH.
+      eauto with my_db.
   Qed.
 
   (** *** Theorems about [merge] and [adj] *)
@@ -1152,13 +922,7 @@ Section Merge.
       merge JJ K LL -> adj JJ A J -> exists L, adj LL A L /\ merge J K L.
   Proof.
     intros.
-    exists (A :: LL).
-    split.
-    - apply adj_hd.
-    - eapply merge_l.
-      apply H0.
-      apply adj_hd.
-      apply H.
+    eauto with my_db.
   Qed.
 
   Theorem merge_unadj_1 : forall J K L JJ A,
@@ -1178,8 +942,9 @@ Section Merge.
          pose proof (adj_swap _ _ _ _ _ IHa H0).
          pose proof (adj_swap _ _ _ _ _ H3 H). destruct H4 as [U [H4 H4b]]. destruct H5 as [U1 [H5 H5b]].
          pose proof (adj_same_result _ _ _ _ H5b H2).
-         eapply perm_merge_1 in H6 as H7. exists U. eauto.
-         econstructor; solve [ eauto ].
+         eapply perm_merge_1 in H6 as H7.
+         eauto with my_db.
+         eauto with my_db. (* for perm_merge_1 *)
     - intros.
       specialize (IHmerge _ _ H2) as [LL0 [IHa IHb]].
       pose proof (adj_swap _ _ _ _ _ IHa H0) as [U [H3 H3a]].
@@ -1190,13 +955,7 @@ Section Merge.
       merge J KK LL -> adj KK A K -> exists L, adj LL A L /\ merge J K L.
   Proof.
     intros.
-    exists (A :: LL).
-    split.
-    - apply adj_hd.
-    - eapply merge_r.
-      -- apply H0.
-      -- apply adj_hd.
-      -- apply H.
+    eauto with my_db.
   Qed.
 
   Theorem merge_unadj_2 : forall J K L KK A,
@@ -1204,11 +963,9 @@ Section Merge.
   Proof.
     intros.
     apply merge_sym in H.
-    eapply merge_unadj_1 in H0 as [LL [H0a H0b]].
-    - exists LL. split.
-      -- apply H0a.
-      -- apply merge_sym in H0b. apply H0b.
-    - apply H.
+    pose proof (merge_unadj_1 _ _ _ _ _ H H0) as [LL [H0a H0b]].
+    apply merge_sym in H0b.
+    eauto with my_db.
   Qed.
 
   Theorem merge_unadj_3 : forall J K L LL A,
@@ -1242,18 +999,12 @@ Section Merge.
              split. auto.
              pose proof (adj_swap _ _ _ _ _ H5 H0) as [U2 [H7a H7b]].
              pose proof (adj_same_result _ _ _ _ H7b H2).
-             eapply perm_merge_3.
-             eapply merge_l; solve [ eauto ].
-             apply H4.
+             eapply perm_merge_3; eauto with my_db.
          --- destruct IHmerge2 as [JJ0 [IHmerge2a IHmerge2b]].
              pose proof (adj_swap _ _ _ _ _ H5 H0) as [U1 [H6a H6b]].
              pose proof (adj_same_result _ _ _ _ H6b H2).
-             right.
              epose proof (perm_merge_3 J JJ0 _ _ _ H4).
-             exists JJ0.
-             split.
-             apply IHmerge2a.
-             apply H6.
+             eauto with my_db.
     - (* merge_r *)
       intros.
       pose proof (adj_same_result_diff _ _ _ _ _ H2 H0) as [[H3a H3b] | [KK0 H3alt]].
@@ -1276,16 +1027,10 @@ Section Merge.
              pose proof (adj_swap _ _ _ _ _ IHa H) as [U1 [H6 H6b]].
              right. exists U1. split.
              apply H6b.
-             eapply perm_merge_3.
-             eapply merge_r.
-             apply H6.
-             apply H3.
-             apply IHb.
-             apply H4.
-             (* cleanup *)
+             eapply perm_merge_3; try eauto with my_db.
              Unshelve.
-             econstructor; solve [ eauto ].
-             econstructor; solve [ eauto ].
+             eauto with my_db.
+             eauto with my_db.
   Qed.
 
   (** *** Consequences of merge and adj *)
@@ -1296,13 +1041,9 @@ Section Merge.
       merge JJ K LL.
   Proof.
     intros.
-    apply merge_unadj_1 with (JJ := JJ) (A := A) in H as [LL1 [H2a H2b]].
-    apply adj_same_result with (K := LL) in H2a.
-    apply perm_merge_3 with (L := LL1).
-    - apply H2b.
-    - apply H2a.
-    - apply H1.
-    - apply H0.
+    pose proof (merge_unadj_1 _ _ _ _ _ H H0) as [LL1 [H2a H2b]].
+    pose proof (adj_same_result _ _ _ _ H2a H1).
+    apply (perm_merge_3 _ _ _ _ H2b H2).
   Qed.
 
   Theorem merge_invert_2 : forall A J KK K LL L,
@@ -1314,10 +1055,7 @@ Section Merge.
     intros.
     apply merge_sym in H.
     apply merge_sym.
-    eapply merge_invert_1.
-    - apply H.
-    - apply H0.
-    - apply H1.
+    apply (merge_invert_1 _ _ _ _ _ _ H H0 H1).
   Qed.
 
   Theorem merge_move_12 : forall A JJ J KK K L,
@@ -1327,8 +1065,8 @@ Section Merge.
       merge JJ K L.
   Proof.
     intros.
-    eapply merge_unadj_1 in H1 as [LL [H1a H1b]].
-    eapply merge_r. apply H0. apply H1a. apply H1b. apply H.
+    pose proof (merge_unadj_1 _ _ _ _ _ H1 H) as [LL [H1a H1b]].
+    eauto with my_db.
   Qed.
 
   Theorem merge_move_21 : forall A JJ J KK K L,
@@ -1338,8 +1076,8 @@ Section Merge.
       merge J KK L.
   Proof.
     intros.
-    eapply merge_unadj_2 in H1 as [LL [H1a H1b]].
-    eapply merge_l. apply H. apply H1a. apply H1b. apply H0.
+    pose proof (merge_unadj_2 _ _ _ _ _ H1 H0) as [LL [H1a H1b]].
+    eauto with my_db.
   Qed.
 
   (** ** [add_to_merge] *)
@@ -1349,10 +1087,7 @@ Section Merge.
       merge J KK L ->
       exists M, merge J K M /\ adj L A M.
   Proof.
-    intros.
-    exists (A :: L). split.
-    - eapply merge_r. apply H. apply adj_hd. apply H0.
-    - apply adj_hd.
+    eauto with my_db.
   Qed.
 
   Theorem add_to_merge_left : forall A J JJ K L,
@@ -1360,22 +1095,14 @@ Section Merge.
       merge JJ K L ->
       exists M, merge J K M /\ adj L A M.
   Proof.
-    intros.
-    exists (A :: L). split.
-    - eapply merge_l. apply H. apply adj_hd. apply H0.
-    - apply adj_hd.
+    eauto with my_db.
   Qed.
 
   Theorem merge_nil_equal : forall L,
       merge nil L L.
   Proof.
     intros.
-    induction L.
-    - apply merge_nil.
-    - eapply merge_r.
-      apply adj_hd.
-      apply adj_hd.
-      apply IHL.
+    induction L; eauto with my_db.
   Qed.
 
   Theorem merge_exists : forall J K,
@@ -1384,11 +1111,7 @@ Section Merge.
     intros.
     induction J.
     - exists K. apply merge_nil_equal.
-    - destruct IHJ as [X]. exists (a :: X).
-      eapply merge_l.
-      -- apply adj_hd.
-      -- apply adj_hd.
-      -- apply H.
+    - destruct IHJ as [X]. eauto with my_db.
   Qed.
 
   Theorem merge_head_lemma : forall L A,
@@ -1397,12 +1120,12 @@ Section Merge.
     intros.
     induction L as [| Y L'].
     - apply merge_nil_equal.
-    - eapply add_to_merge_left in IHL' as [M [IHa IHb]].
+    - assert (adj L' A (A :: L')) by apply adj_hd.
+      pose proof (add_to_merge_left _ _ _ _ _ H IHL') as [M [IHa IHb]].
       eapply merge_r.
       -- apply adj_hd.
       -- apply adj_hd.
       -- apply merge_sym. apply merge_nil_equal.
-      -- apply adj_hd. Unshelve. apply A.
   Qed.
 
   (** Note: the contrary is not true, since adj is order-sensitive *)
@@ -1412,12 +1135,8 @@ Section Merge.
     intros.
     induction H.
     - apply merge_head_lemma.
-    - eapply merge_l.
-      -- apply adj_hd.
-      -- apply adj_hd.
-      -- apply IHadj.
+    - eauto with my_db.
   Qed.
-
 
   (** *** Associativity of [merge] *)
   Theorem merge_assoc : forall J K L JK KL JKL1 JKL2,
@@ -1426,7 +1145,7 @@ Section Merge.
       perm JKL1 JKL2.
   Proof.
     intros J K L JK KL JKL1 JKL2 H1.
-    generalize dependent L. generalize dependent KL. generalize dependent JKL1. generalize dependent JKL2.
+    revert L. revert KL. revert JKL1. revert JKL2.
     induction H1; intros.
     - (* merge_nil *)
       apply merge_nil_perm in H.
@@ -1487,17 +1206,11 @@ Section Merge.
     - (* merge_left *)
       pose proof (merge_unadj_1 _ _ _ _ _ H2 H) as [X [H3a H3b]].
       specialize (IHmerge _ H3b).
-      eapply perm_split.
-      apply H0.
-      apply H3a.
-      apply IHmerge.
+      eauto with my_db.
     - (* merge_right *)
       pose proof (merge_unadj_2 _ _ _ _ _ H2 H) as [X [H3a H3b]].
       specialize (IHmerge _ H3b).
-      eapply perm_split.
-      apply H0.
-      apply H3a.
-      apply IHmerge.
+      eauto with my_db.
   Qed.
 
   Theorem merge_preserves_perm : forall L LL J K,
@@ -1552,20 +1265,14 @@ Section Merge.
       subst.
       destruct IHmerge as [JJ1 [IHa IHb]].
       pose proof (adj_swap _ _ _ _ _ IHb H0) as [U [H2a H2b]].
-      exists U.
-      split.
-      apply (perm_split _ _ _ _ _ H H2a IHa).
-      apply H2b.
+      eauto with my_db.
     - (* merge_r *)
       subst.
       apply adj_det in H as [Ha Hb].
       subst.
       apply merge_sym in H1.
       apply merge_nil_perm in H1.
-      exists LL.
-      split.
-      apply H1.
-      apply H0.
+      eauto with my_db.
   Qed.
 
   Theorem merge_same_result_diff : forall J A K B L,
