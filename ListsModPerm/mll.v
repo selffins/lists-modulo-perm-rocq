@@ -32,38 +32,8 @@ Module MLL_LMP.
   (** * Context representation *)
   Definition ctx := list formula.
 
-  (*
-
-Define mll : olist -> prop by
-; mll L :=
-    exists A, adj (natom A :: nil) (atom A) L
-
-; mll L :=
-    exists A B LL JJ KK J K,
-      adj LL (tens A B) L /\
-      merge JJ KK LL /\
-      adj JJ A J /\ mll J /\
-      adj KK B K /\ mll K
-
-; mll (one :: nil)
-
-; mll L :=
-    exists A B LL J K,
-      adj LL (par A B) L /\
-      adj LL A J /\
-      adj J B K /\
-      mll K
-
-; mll L :=
-    exists LL,
-      adj LL bot L /\
-      mll LL
-.
-
-   *)
 
   (** * Inference rules *)
-  Reserved Notation " '|-' B " (at level 80).
   Inductive mll : ctx -> Prop :=
   | rules_id : forall L A, adj (natom A :: nil) (atom A) L -> mll L
   | rules_tens : forall L A B LL JJ KK J K,
@@ -79,8 +49,7 @@ Define mll : olist -> prop by
       mll K ->
       mll L
   | rules_bot : forall L LL,
-      adj LL bot L -> mll LL -> mll L
-    where " '|-' B " := (mll B).
+      adj LL bot L -> mll LL -> mll L.
 
   (** ** Example derivations *)
 
@@ -93,7 +62,7 @@ Define mll : olist -> prop by
    *)
 
   Example a1_par_a2_a3_par_a4_1 : forall A1 A2 A3 A4,
-        |- [A1 ; A2 ; A3 ; A4] -> |- [par A1 A2; par A3 A4].
+      mll [A1 ; A2 ; A3 ; A4] -> mll [par A1 A2; par A3 A4].
   Proof.
     intros.
     eapply rules_par with (K := [A1 ; A2 ; par A3 A4]).
@@ -167,7 +136,7 @@ Define mll : olist -> prop by
   Qed.
 
   (** ** Identity *)
-  Theorem Identity : forall A B, dual_rel A B -> |- [A; B].
+  Theorem Identity : forall A B, dual_rel A B -> mll [A; B].
   Proof.
     intros.
     induction H.
@@ -196,7 +165,7 @@ Define mll : olist -> prop by
 
   (** ** Exchange *)
   Theorem Exchange : forall K L,
-      |- K -> perm K L -> |- L.
+      mll K -> perm K L -> mll L.
   Proof.
     intros. generalize dependent L.
     induction H;intros.

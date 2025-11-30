@@ -11,9 +11,8 @@
     In the abella style, [append] and [rev] are relational, so we have relational [append] and [rev] as well in Coq.
  **)
 
-From Coq Require Export Sets.Multiset.
 From Coq Require Export List.
-From Coq Require Import Arith.EqNat.
+
 Export ListNotations.
 
 Module Type ELT_DEC.
@@ -32,6 +31,7 @@ Module Type OList (ELT : ELT_DEC).
   | append_nil (L : list o): append_rel [] L L
   | append_cons e J K L (H : append_rel J K L): append_rel (e :: J) K (e :: L).
 
+  Hint Constructors append_rel : my_db.
   (** *** Examples *)
 
   Example append_rel_12_34_1234 :
@@ -52,19 +52,6 @@ Module Type OList (ELT : ELT_DEC).
     apply append_cons.
     apply append_cons.
     apply append_nil.
-  Qed.
-
-  Example append_rel_12_nil_13_fail :
-    forall o1 o2 o3,
-      o2 <> o3 ->
-    not (append_rel ([o1 ; o2]) [] ([o1 ; o3])).
-  Proof.
-    intros.
-    unfold not.
-    intros.
-    inversion H0;subst.
-    inversion H4.
-    contradiction.
   Qed.
 
   (** *** Equivalence to Rocq's [append] *)
@@ -277,44 +264,36 @@ Section Perm.
     apply adj_hd.
   Qed.
 
+  (* you can have duplicates! *)
+  Example adj_2_23_23 :
+    forall o2 o3,
+    adj ([o2 ; o3]) o2 ([o2; o2 ; o3]).
+  Proof.
+    intros.
+    eauto with my_db.
+  Qed.
+
   Theorem adj_exists : forall A L, exists M, adj L A M.
   Proof.
     intros.
-    (* eauto with my_db *)
-    exists (A :: L).
-    apply adj_hd.
+    eauto with my_db.
   Qed.
 
   Theorem adj_tl_inv : forall B K A L, adj (B :: K) A (B :: L) -> adj K A L.
   Proof.
     intros.
-    inversion H; subst. (*; eauto with my_db.*)
-    - apply adj_hd.
-    - apply H3.
+    inversion H; subst; eauto with my_db.
   Qed.
 
   Theorem adj_swap : forall A J K B L, adj J A K -> adj K B L -> exists U, adj J B U /\ adj U A L.
   Proof.
     intros. generalize dependent J.
     induction H0;intros.
-    - inversion H; subst. (*; eauto with my_db. *)
-      -- exists (A0 :: J).
-         split.
-         --- apply adj_hd.
-         --- apply adj_tl. apply H.
-      -- exists (A0 :: B :: K).
-         split.
-         --- apply adj_hd.
-         --- apply adj_tl. apply H.
-    - inversion H; subst. (*; eauto with my_db.
-      specialize (IHadj _ H4) as [U [IHa IHb]].
-      eauto with my_db. *)
-      -- exists L. split. apply H0. apply adj_hd.
-      -- apply IHadj in H4. destruct H4 as [X [H4a H4b]].
-         exists (B :: X).
-         split.
-         --- apply adj_tl. apply H4a.
-         --- apply adj_tl. apply H4b.
+    - inversion H; subst ; eauto with my_db.
+    - inversion H; subst.
+      -- eauto with my_db.
+      -- apply IHadj in H4 as [X [H4a H4b]].
+         eauto with my_db.
   Qed.
 
   Theorem adj_same : forall A L B, adj L A (B :: L) -> A = B.
@@ -337,7 +316,6 @@ Section Perm.
       apply IHadj in H5 as [X [IHa IHb]].
       info_eauto with my_db.
   Qed.
-
 
   Theorem adj_1_append : forall J A K L JL,
       adj J A K ->

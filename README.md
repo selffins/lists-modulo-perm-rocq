@@ -5,7 +5,7 @@ To compile, run
 
 ``` sh
     coq_makefile -f _CoqProject -o CoqMakefile
-    make -f CoqMakefile_
+    make -f CoqMakefile
 ```
 
 Some notes about observations/decisions made are in:
