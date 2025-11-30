@@ -1,5 +1,8 @@
 *.aux
-*.aux
+*.vo
+*.vok
+*.vos
+*.glob
 CoqMakefile.conf
 CoqMakefile
 .CoqMakefile.d
