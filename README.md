@@ -7,3 +7,7 @@ To compile, run
     coq_makefile -f _CoqProject -o CoqMakefile
     make -f CoqMakefile_
 ```
+
+Some notes about observations/decisions made are in:
+
+https://docs.google.com/document/d/e/2PACX-1vQw71-1sMkQU0xtR4KDcSZrzBy25di2cXN9nP1q78wrKi_hvpqbuR34rJ27H9QZ48AsR_GVduwOI2LN/pub
