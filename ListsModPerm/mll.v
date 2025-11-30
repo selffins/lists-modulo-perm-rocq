@@ -12,15 +12,11 @@ Module MLL_LMP.
   | tens : formula -> formula -> formula
   | par : formula -> formula -> formula.
 
-  Theorem LForm_dec_eq : forall F G : formula, {F = G} + {F <> G}.
-  Admitted.
+  Module ELT_DEC.
+    Definition T := formula.
+  End ELT_DEC.
 
-  Module F_dec <: Eqset_dec.
-    Definition Eqset_T := formula.
-    Definition eqA_dec := LForm_dec_eq.
-  End F_dec.
-
-  Declare Module LMPFormulas : OList(F_dec).
+  Declare Module LMPFormulas : OList(ELT_DEC).
   Export LMPFormulas.
 
   Fixpoint negation (A : formula) : formula :=

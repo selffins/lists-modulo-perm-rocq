@@ -16,16 +16,15 @@ From Coq Require Export List.
 From Coq Require Import Arith.EqNat.
 Export ListNotations.
 
-Module Type Eqset_dec.
-  Parameter Eqset_T : Type.
-  Parameter eqA_dec : forall x y : Eqset_T, {x = y} + {x <> y}.
-End Eqset_dec.
+Module Type ELT_DEC.
+  Parameter T : Type.
+End ELT_DEC.
 
-Module Type OList (ELT : Eqset_dec).
+Module Type OList (ELT : ELT_DEC).
 
   (** ** Elements *)
   Import ELT.
-  Definition o := Eqset_T.
+  Definition o := T.
 
   (** ** Append *)
 
@@ -370,13 +369,17 @@ Section Perm.
 
   (** *** Examples of [perm] *)
 
+  Example perm_12_21 :
+    forall o1 o2, perm [o1 ; o2] [o2 ; o1].
+  Proof.
+    intros. eauto with my_db.
+  Qed.
+
   Example perm_123_321 :
     forall o1 o2 o3, perm [o1 ; o2 ; o3] [o3 ; o2 ; o1].
   Proof.
     intros. eauto 9 with my_db.
   Qed.
-
-
 
   (** ** [Perm] theorems *)
 
@@ -385,7 +388,7 @@ Section Perm.
     intros.
     induction H.
     - eauto with my_db.
-    - info_eauto with my_db.
+    - eauto with my_db.
   Qed.
 
   Theorem perm_refl : forall L, perm L L.
@@ -418,7 +421,7 @@ Section Perm.
          destruct IHperm as [J [IHa IHb]].
          destruct Heq.
          pose proof (adj_swap _ _ _ _ _ IHa H0)  as [U [H6a H6b]].
-         info_eauto with my_db.
+         eauto with my_db.
   Qed.
 
   Theorem perm_cons_2 : forall A K L,
@@ -500,7 +503,7 @@ Section Perm.
       perm K L.
   Proof.
     intros.
-    inversion H; inversion H0; subst; info_eauto with my_db.
+    inversion H; inversion H0; subst; eauto with my_db.
   Qed.
 
   Theorem adj_same_result : forall J K A L,
@@ -511,7 +514,7 @@ Section Perm.
     intros. generalize dependent K.
     induction H;intros.
     - inversion H0; subst; eauto with my_db.
-    - inversion H0; subst; info_eauto with my_db.
+    - inversion H0; subst; eauto with my_db.
   Qed.
 
   Theorem adj_same_result_diff : forall J A K B L,
@@ -607,7 +610,7 @@ Section Perm.
          exists U1. split. auto.
          pose proof (adj_same_result _ _ _ _ H2 H3b).
          pose proof (adj_preserves_perm _ _ _ _ _ H3 H4 IHb).
-         apply (perm_trans _ _ _ H5 H6); info_eauto.
+         apply (perm_trans _ _ _ H5 H6); eauto.
   Qed.
 
   Theorem adj_perm_source : forall J K A L,
