@@ -314,7 +314,7 @@ Section Perm.
     - inversion H0; subst; eauto with my_db.
     - inversion H0; subst.
       apply IHadj in H5 as [X [IHa IHb]].
-      info_eauto with my_db.
+      eauto with my_db.
   Qed.
 
   Theorem adj_1_append : forall J A K L JL,
