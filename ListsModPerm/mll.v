@@ -260,16 +260,117 @@ Module MLL_LMP.
     generalize dependent B. generalize dependent L.
     induction H; intros.
     - eauto 10 with my_db.
-    - rename B into B1.
-      rename K into K1.
-      rename B0 into B.
-      rename L into L1.
-      rename L0 into L.
-      inversion H0; subst.
+    - inversion H0; subst.
       -- eauto 10 with my_db.
       -- specialize (IHadj _ _ H5).
          eauto 10 with my_db.
   Qed.
+
+  Theorem par_inv : forall L JJ A B,
+      mll L -> adj JJ (par A B) L ->
+      exists KK LL, adj JJ A KK /\ adj KK B LL /\ mll LL.
+  Proof.
+    intros LL J A B H1.
+    generalize dependent A. generalize dependent B. generalize dependent J.
+    induction H1; intros.
+    - (* id *)
+      pose proof (adj_same_result_diff _ _ _ _ _ H0 H) as [[Heq H1] | [KK1 H1]].
+      -- discriminate.
+      -- inversion H1; subst.
+         inversion H5.
+    - (* tens *)
+      pose proof (adj_same_result_diff _ _ _ _ _ H3 H) as [[Heq H4] | [KK1 H4]].
+      -- discriminate.
+      -- pose proof (merge_unadj_3 _ _ _ _ _ H0 H4) as [[JJ1 [H5 H5b]] | [KK2 [H5 H5b]]].
+         --- pose proof (adj_swap _ _ _ _ _ H5 H1) as [U [H6 H6b]].
+             specialize (IHmll1 _ _ _ H6b) as [KK2 [LL1 [IH1 [IH1b IH1c]]]].
+             pose proof (adj_swap _ _ _ _ _ H6 IH1) as [U1 [H7 H7b]].
+             pose proof (adj_swap _ _ _ _ _ H7b IH1b) as [U2 [H8 H8b]].
+             assert (merge U2 KK (A0 :: B0 :: KK1)) by eauto with my_db.
+             assert (mll (tens A B :: A0 :: B0 :: KK1)) by eauto with my_db.
+             pose proof (adj_swap _ _ _ _ _ H4 H) as [U3 [H11 H11b]].
+             pose proof (adj_same_result _ _ _ _ H11b H3).
+             pose proof (adj_perm_full _ _ _ _ H12 H11) as [KK3 [H13 H13b]].
+             assert (perm (tens A B :: A0 :: B0 :: KK1) (A0 :: B0 :: J0)) by eauto 6 with my_db.
+             pose proof (mll_exchange _ _ H10 H14).
+             eauto 6 with my_db.
+         --- pose proof (adj_swap _ _ _ _ _ H5 H2) as [U [H6 H6b]].
+             specialize (IHmll2 _ _ _ H6b) as [KK3 [LL1 [IH2 [IH2b IH2c]]]].
+             pose proof (adj_swap _ _ _ _ _ H6 IH2) as [U1 [H7 H7b]].
+             pose proof (adj_swap _ _ _ _ _ H7b IH2b) as [U2 [H8 H8b]].
+             assert (merge JJ U2 (A0 :: B0 :: KK1)) by eauto with my_db.
+             assert (mll (tens A B :: A0 :: B0 :: KK1)) by eauto with my_db.
+             pose proof (adj_swap _ _ _ _ _ H4 H) as [U3 [H11 H11b]].
+             pose proof (adj_same_result _ _ _ _ H11b H3).
+             pose proof (adj_perm_full _ _ _ _ H12 H11) as [KK4 [H13 H13b]].
+             assert (perm (tens A B :: A0 :: B0 :: KK1) (A0 :: B0 :: J0)) by eauto 6 with my_db.
+             pose proof (mll_exchange _ _ H10 H14).
+             eauto 6 with my_db.
+    - (* one *)
+      intros.
+      inversion H; subst. inversion H3.
+    - (* par *)
+      pose proof (adj_same_result_diff _ _ _ _ _ H3 H)  as [[Heq H4] | [KK H4]].
+      -- inversion Heq; subst.
+         assert (perm (A :: B :: J0) K) by eauto with my_db.
+         apply perm_sym in H5.
+         pose proof (mll_exchange _ _ H2 H5).
+         eauto 6 with my_db.
+      -- pose proof (adj_swap _ _ _ _ _ H4 H0) as [U [H5 H5b]].
+         pose proof (adj_swap _ _ _ _ _ H5b H1) as [U1 [H6 H6b]].
+         specialize (IHmll _ _ _ H6b) as [KK1 [LL1 [IH2 [IH2b IH2c]]]].
+         pose proof (adj_swap _ _ _ _ _ H6 IH2) as [U2 [H7 H7b]].
+         pose proof (adj_swap _ _ _ _ _ H7b IH2b) as [U3 [H8 H8b]].
+         pose proof (adj_swap _ _ _ _ _ H5 H7) as [U4 [H9 H9b]].
+         pose proof (adj_swap _ _ _ _ _ H9b H8) as [U5 [H10 H10b]].
+         assert (mll (par A B :: U5)) by eauto with my_db.
+         assert (perm (par A B :: U5) (A0 :: B0 :: J0)). {
+           eapply (perm_split _ _ B0 (par A B :: U4) (A0 :: J0) _ _).
+           Unshelve.
+           2: eauto with my_db.
+           2: eauto with my_db.
+           eapply (perm_split _ _ A0 (par A B :: KK) J0 _ _).
+           Unshelve.
+           2: eauto with my_db. 
+           2: eauto with my_db.
+           pose proof (adj_swap _ _ _ _ _ H4 H) as [U6 [H12 H12b]].
+           pose proof (adj_same_result _ _ _ _ H12b H3).
+           eapply perm_trans; eauto.
+           eauto with my_db.
+         }
+         pose proof (mll_exchange _ _ H11 H12).
+         eauto 6 with my_db.
+    - (* bot *)
+      pose proof (adj_same_result_diff _ _ _ _ _ H0 H)  as [[Heq H4] | [KK H4]].
+      -- discriminate.
+      -- specialize (IHmll _ _ _ H4) as [KK1 [LL1 [IH2 [IH2b IH2c]]]].
+         assert (mll (bot :: LL1)) by eauto with my_db.
+         assert (perm (bot :: LL1) (A :: B :: J)). {
+           eapply (perm_split _ _ B (bot :: KK1) (A :: J) _ _).
+           Unshelve.
+           2: eauto with my_db.
+           2: eauto with my_db.
+           eapply (perm_split _ _ A (bot :: KK) J _ _).
+           Unshelve.
+           2: eauto with my_db.
+           2: eauto with my_db.
+           pose proof (adj_swap _ _ _ _ _ H4 H) as [U [H5 H5b]].
+           pose proof (adj_same_result _ _ _ _ H5b H0).
+           eapply perm_trans; eauto.
+           eauto with my_db.
+         }
+         pose proof (mll_exchange _ _ H2 H3).
+         eauto 6 with my_db.
+  Qed.
+
+  Theorem mll_cut : forall A B JJ J KK K LL,
+      dual_rel A B ->
+      adj JJ A J -> mll J ->
+      adj KK B K -> mll K ->
+      merge JJ KK LL ->
+      mll LL.
+  Proof.
+    Admitted.
 
 
 End MLL_LMP.
